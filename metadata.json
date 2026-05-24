@@ -1,0 +1,6 @@
+{
+  "name": "PodoGest",
+  "description": "Sistema integral de gestión para clínicas de podología. Incluye control de pacientes, agenda, inventario y reportes financieros.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

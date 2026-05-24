@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PodoGest - Vanilla Reference Console</title>
+    <!-- Tailwind CSS CDN for instant styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- HEADER BRANDING -->
+    <header class="bg-emerald-600 text-white shadow-sm py-4 px-6">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="bg-white text-emerald-600 font-black p-2 rounded-xl text-lg leading-none">PG</div>
+                <span class="text-xl font-bold tracking-tight">PodoGest <span class="text-xs font-normal opacity-85">Vanilla Dev Reference</span></span>
+            </div>
+            <div id="user-header" class="hidden items-center gap-3">
+                <span id="active-user-name" class="text-sm font-semibold bg-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-500/30">Dra. Lizbeth</span>
+                <button id="logout-btn" class="text-xs font-bold text-rose-100 hover:text-white hover:bg-rose-700/20 px-3 py-2 rounded-lg transition-colors">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl mx-auto w-full p-4 md:p-8">
+
+        <!-- 1. PANTALLA DE ACCESO (LOGIN) -->
+        <section id="login-section" class="max-w-md mx-auto my-12 bg-white rounded-3xl border border-slate-100 p-8 shadow-xl">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-extrabold text-slate-800">Iniciar Sesión</h2>
+                <p class="text-sm text-slate-500 mt-1">Ingresa tu perfil profesional para operar PodoGest</p>
+            </div>
+
+            <div id="login-error" class="hidden mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-medium border border-red-100"></div>
+
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1" for="login-email">Correo Electrónico</label>
+                    <input type="email" id="login-email" required placeholder="lizbeth@podogest.cl" 
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-sm font-medium transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1" for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" required placeholder="******" 
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-sm font-medium transition-all">
+                </div>
+                <button type="submit" id="btn-login-submit" 
+                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg transition-colors text-sm">
+                    Ingresar al Sistema
+                </button>
+            </form>
+
+            <!-- Quick accounts panel for local developers and validators -->
+            <div class="mt-6 pt-4 border-t border-slate-100">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center mb-3">Accesos rápidos de prueba</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="document.getElementById('login-email').value='lizbeth@podogest.cl'; document.getElementById('login-password').value='podo1234';" 
+                        class="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold text-center transition-all">
+                        Dra. Lizbeth
+                    </button>
+                    <button onclick="document.getElementById('login-email').value='yarella@podogest.cl'; document.getElementById('login-password').value='podo1234';" 
+                        class="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold text-center transition-all">
+                        Dra. Yarella
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. PANTALLA PRINCIPAL: AGENDA Y CALENDARIO GLOBAL -->
+        <section id="app-section" class="hidden space-y-6">
+            
+            <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-emerald-800 text-sm font-medium flex items-center justify-between">
+                <span>Sesión activa en clínica centralizada</span>
+                <span class="text-xs bg-emerald-200 px-2.5 py-1 rounded-full text-emerald-900 font-bold">Base de datos en la nube activa</span>
+            </div>
+
+            <div class="grid md:grid-cols-5 gap-6">
+                <!-- FORMULARIO DE AGENDAMIENTO CON VALIDACIÓN ANTI-CHOQUES -->
+                <div class="md:col-span-2 bg-white rounded-3xl border border-slate-100 p-6 shadow-sm h-fit">
+                    <h3 class="text-lg font-extrabold text-slate-800 mb-4 border-b pb-2">Agendar Cita Médica</h3>
+                    
+                    <div id="booking-alert" class="hidden p-3 rounded-xl text-xs font-bold mb-4"></div>
+
+                    <form id="booking-form" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Nombre del Paciente</label>
+                            <input type="text" id="patient-name" required placeholder="Ej. Juan Pérez" 
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Teléfono</label>
+                            <input type="text" id="patient-phone" required placeholder="Ej. +56 9 1234 5678" 
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fecha de la Cita</label>
+                            <input type="date" id="appointment-date" required 
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Bloque Horario (Inicio)</label>
+                            <select id="appointment-time" required 
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                                <option value="">Seleccione hora...</option>
+                                <option value="09:00">09:00 - 10:00</option>
+                                <option value="10:00">10:00 - 11:00</option>
+                                <option value="11:00">11:00 - 12:00</option>
+                                <option value="12:00">12:00 - 13:00</option>
+                                <option value="14:00">14:00 - 15:00</option>
+                                <option value="15:00">15:00 - 16:00</option>
+                                <option value="16:00">16:00 - 17:00</option>
+                                <option value="17:00">17:00 - 18:00</option>
+                                <option value="18:00">18:00 - 19:00</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tratamiento / Servicio</label>
+                            <input type="text" id="treatment-type" required placeholder="Ej. Quiropodia Completa" 
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                        </div>
+                        <button type="submit" 
+                            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors text-sm shadow-sm flex justify-center items-center gap-2">
+                            <span>Validar y Agendar</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- LISTADO DE CITAS EN TIEMPO REAL -->
+                <div class="md:col-span-3 bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h3 class="text-lg font-extrabold text-slate-800">Citas en Colección Centralizada</h3>
+                        <span class="text-xs font-medium text-slate-400">Total: <span id="appt-count" class="font-bold text-slate-600">0</span></span>
+                    </div>
+
+                    <!-- Filtro rápido por fecha -->
+                    <div class="mb-4">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filtro de Calendario por Fecha</label>
+                        <input type="date" id="filter-date" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+
+                    <div class="flex-grow overflow-auto" style="max-height: 400px;">
+                        <ul id="appointments-list" class="space-y-2">
+                            <!-- Injected dynamically with JavaScript -->
+                            <li class="p-8 text-center text-slate-400 text-xs font-medium">Cargando citas registradas en Firestore...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-100 border-t border-slate-200/50 py-4 px-6 text-center text-xs text-slate-400 font-semibold mt-auto">
+        PodoGest Dev Hub &bull; Solución centralizada para Lizbeth, Yarella, Admin &bull; 2026
+    </footer>
+
+    <!-- Firebase v9 - Modular SDK CDN -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>

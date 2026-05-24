@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "Patient": {
+      "title": "Patient",
+      "description": "Patient card records inside PodoGest clinic system",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "registeredAt": { "type": "string" },
+        "notes": { "type": "string" },
+        "lastVisit": { "type": "string" },
+        "specialistId": { "type": "string" }
+      },
+      "required": ["name", "phone", "registeredAt"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Appointment slot booked by a specific professional",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "time": { "type": "string" },
+        "treatmentType": { "type": "string" },
+        "notes": { "type": "string" },
+        "cost": { "type": "number" },
+        "paid": { "type": "boolean" },
+        "paymentMethod": { "type": "string", "enum": ["cash", "transfer"] },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+        "reminderSent": { "type": "boolean" },
+        "specialistId": { "type": "string" }
+      },
+      "required": ["patientId", "date", "time", "treatmentType", "cost", "paid", "status"]
+    },
+    "Specialist": {
+      "title": "Specialist",
+      "description": "Healthcare professionals (Lizbeth, Yarella, Admin) that operate in the clinic",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Treatment": {
+      "title": "Treatment",
+      "description": "Available treatment configurations and services in the clinic",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "cost": { "type": "number" },
+        "specialistId": { "type": "string" }
+      },
+      "required": ["name", "cost"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Financial sale entries registered upon treatment completions",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "items": { "type": "array" },
+        "total": { "type": "number" },
+        "type": { "type": "string", "enum": ["treatment"] },
+        "paymentMethod": { "type": "string", "enum": ["cash", "transfer"] },
+        "patientId": { "type": "string" },
+        "specialistId": { "type": "string" }
+      },
+      "required": ["date", "items", "total", "type"]
+    },
+    "Supply": {
+      "title": "Supply",
+      "description": "Medical supplies inventory in the clinical space",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "stock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "unit": { "type": "string" },
+        "specialistId": { "type": "string" }
+      },
+      "required": ["name", "stock", "minStock", "unit"]
+    }
+  },
+  "firestore": {
+    "/patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Clinical files of registered podiatry patients"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Clinician schedules and patient appointments slots"
+    },
+    "/specialists/{specialistId}": {
+      "schema": "Specialist",
+      "description": "Registered healthcare specialists"
+    },
+    "/treatments/{treatmentId}": {
+      "schema": "Treatment",
+      "description": "Standard treatment configurations"
+    },
+    "/sales/{saleId}": {
+      "schema": "Sale",
+      "description": "Ledger entries tracking completed sales transactions"
+    },
+    "/supplies/{supplyId}": {
+      "schema": "Supply",
+      "description": "Clinical shared podiatry inventory items"
+    }
+  }
+}

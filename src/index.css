@@ -1,0 +1,221 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ─── Base ─────────────────────────────────────────────── */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #f0f4f8;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(16,185,129,0.07) 0%, transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(99,102,241,0.05) 0%, transparent 40%),
+    radial-gradient(#e2e8f0 1px, transparent 1px);
+  background-size: auto, auto, 28px 28px;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────── */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+}
+
+/* ─── Glass Card ──────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* ─── Premium Card ────────────────────────────────────────── */
+.premium-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+.premium-card:hover {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05);
+  transform: translateY(-1px);
+  border-color: #c7d7e8;
+}
+.premium-card-clickable {
+  cursor: pointer;
+}
+
+/* ─── KPI Gradient Cards ──────────────────────────────────── */
+.kpi-emerald {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-color: #a7f3d0;
+}
+.kpi-blue {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #bfdbfe;
+}
+.kpi-amber {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #fde68a;
+}
+.kpi-red {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  border-color: #fecdd3;
+}
+.kpi-violet {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-color: #ddd6fe;
+}
+
+/* ─── Sidebar Glow ────────────────────────────────────────── */
+.sidebar-gradient {
+  background: linear-gradient(180deg, #064e3b 0%, #065f46 35%, #047857 100%);
+}
+
+/* ─── Nav Item Active ─────────────────────────────────────── */
+.nav-active {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 1px 4px rgba(0,0,0,0.1);
+}
+
+/* ─── Glow Button ─────────────────────────────────────────── */
+.btn-glow-emerald {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 4px 15px rgba(16,185,129,0.35);
+  transition: all 0.2s ease;
+}
+.btn-glow-emerald:hover {
+  box-shadow: 0 6px 20px rgba(16,185,129,0.5);
+  transform: translateY(-1px);
+}
+.btn-glow-emerald:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16,185,129,0.3);
+}
+
+/* ─── Status Badges ───────────────────────────────────────── */
+.badge-pending  { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+.badge-done     { background:#d1fae5; color:#064e3b; border-color:#a7f3d0; }
+.badge-canceled { background:#fee2e2; color:#7f1d1d; border-color:#fecaca; }
+
+/* ─── Date Input ──────────────────────────────────────────── */
+input[type="date"] { position: relative; display: flex; align-items: center; }
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background-color: transparent;
+  cursor: pointer;
+  filter: invert(34%) sepia(85%) saturate(1100%) hue-rotate(130deg) brightness(95%) contrast(90%);
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.12);
+  background-color: rgba(16, 185, 129, 0.1);
+}
+input[type="date"]::-webkit-datetime-edit {
+  display: flex; align-items: center;
+  color: #0f172a !important;
+  font-weight: 600; padding: 0;
+}
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  display: flex; align-items: center; padding: 0;
+}
+
+/* ─── Animation Helpers ───────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% auto;
+  animation: shimmer 1.5s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float { animation: float 3s ease-in-out infinite; }
+
+/* ─── Chart Tooltip ───────────────────────────────────────── */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  border-radius: 12px !important;
+  border: none !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+}
+
+/* ─── Mobile-first Bottom Nav ────────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-pb {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0px);
+  }
+}
+
+/* ─── Mobile content bottom padding (for bottom nav) ──────── */
+@media (max-width: 1023px) {
+  main {
+    scroll-behavior: smooth;
+  }
+  /* Give content room above bottom nav */
+  .mobile-content-wrapper {
+    padding-bottom: 80px;
+  }
+}
+
+/* ─── Touch-friendly tap targets ─────────────────────────── */
+@media (hover: none) {
+  button, [role="button"], a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ─── Prevent iOS bounce & overscroll ─────────────────────── */
+html {
+  overflow: hidden;
+  height: 100%;
+}
+body {
+  overflow: hidden;
+  height: 100%;
+  position: fixed;
+  width: 100%;
+}
+#root {
+  overflow: hidden;
+  height: 100%;
+}
+
+/* ─── Smooth input styling on iOS ─────────────────────────── */
+input, select, textarea {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ─── Mobile Header Gradient ─────────────────────────────── */
+.mobile-header {
+  background: linear-gradient(180deg, #064e3b 0%, #065f46 100%);
+}
