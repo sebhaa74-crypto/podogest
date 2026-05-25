@@ -1,6 +1,6 @@
 import React from "react";
 import { useAppState } from "../store";
-import { formatCurrency, cn } from "../lib/utils";
+import { formatCurrency, cn, formatTime } from "../lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
 } from "recharts";
@@ -211,7 +211,7 @@ export function DashboardView({
                     className="flex gap-3 p-3 rounded-xl bg-white border border-slate-100 cursor-pointer hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group shadow-sm"
                   >
                     <div className="w-12 shrink-0 text-center">
-                      <span className="text-xs font-extrabold text-emerald-600 bg-emerald-100 px-1.5 py-1 rounded-lg block">{appt.time}</span>
+                      <span className="text-xs font-extrabold text-emerald-600 bg-emerald-100 px-1.5 py-1 rounded-lg block">{formatTime(appt.time)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 truncate">{patient?.name || "Privado"}</p>

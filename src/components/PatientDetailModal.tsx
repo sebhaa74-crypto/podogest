@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, User, Phone, Mail, FileText, ShoppingBag, Clock, Edit2, Save, MessageCircle, DollarSign, Trash2 } from 'lucide-react';
 import { Patient, Appointment, Sale } from '../types';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, formatTime } from '../lib/utils';
 import { motion } from 'motion/react';
 import { sendSMS } from '../services/smsService';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -191,7 +191,7 @@ export function PatientDetailModal({ patient, appointments, sales, onUpdate, onD
                       <div>
                         <div className="flex items-center gap-2 font-semibold text-slate-800">
                           <Clock className="w-4 h-4 text-slate-400" />
-                          {appt.time} - {new Date(appt.date).toLocaleDateString()}
+                          {formatTime(appt.time)} - {new Date(appt.date).toLocaleDateString()}
                         </div>
                         <p className="text-sm text-slate-500 mt-1">{appt.treatmentType}</p>
                       </div>

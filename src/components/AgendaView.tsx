@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppState } from '../store';
 import { Calendar as CalendarIcon, Clock, User, CheckCircle, XCircle, Plus, Edit2, MessageCircle, ChevronLeft, ChevronRight, DollarSign, Bell, Search, Filter, Trash2 } from 'lucide-react';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn, formatCurrency, formatTime } from '../lib/utils';
 import { AppointmentStatus, Appointment, Patient } from '../types';
 import { AppointmentModal } from './AppointmentModal';
 import { AnimatePresence } from 'motion/react';
@@ -26,67 +26,76 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
   const [filterTreatment, setFilterTreatment] = useState('');
   const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>('all');
 
-  // Auto-send reminders simulation
+    // Auto-send reminders simulation
   useEffect(() => {
     if (!autoRemindersEnabled) return;
-    const now = new Date();
-    appointments.forEach((appt) => {
-      const apptDate = new Date(`${appt.date}T${appt.time}`);
-      const hoursDiff = (apptDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-      const minutesDiff = (apptDate.getTime() - now.getTime()) / (1000 * 60);
-      const patient = patients.find(p => p.id === appt.patientId);
-      
-      if (!patient) return;
 
-      // 1. Send reminder 24 hours before
-      if (hoursDiff > 0 && hoursDiff <= 24 && !appt.reminderSent && appt.status === 'pending') {
-        try {
-          addNotification({
-            title: `Cita Próxima (24h)`,
-            message: `Mañana a las ${appt.time} con ${patient.name} (${appt.treatmentType}).`,
-            type: 'info'
-          });
-          updateAppointment(appt.id, { ...appt, reminderSent: true });
-        } catch (error) {
-          console.error('Error al generar notificación 24h', error);
+    const checkReminders = () => {
+      const now = new Date();
+      appointments.forEach((appt) => {
+        const apptDate = new Date(`${appt.date}T${formatTime(appt.time)}:00`);
+        const hoursDiff = (apptDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const minutesDiff = (apptDate.getTime() - now.getTime()) / (1000 * 60);
+        const patient = patients.find(p => p.id === appt.patientId);
+        
+        if (!patient) return;
+
+        // 1. Send reminder 24 hours before
+        if (hoursDiff > 0 && hoursDiff <= 24 && !appt.reminderSent && appt.status === 'pending') {
+          try {
+            addNotification({
+              title: `Cita Próxima (24h)`,
+              message: `Mañana a las ${formatTime(appt.time)} con ${patient.name} (${appt.treatmentType}).`,
+              type: 'info'
+            });
+            updateAppointment(appt.id, { ...appt, reminderSent: true });
+          } catch (error) {
+            console.error('Error al generar notificación 24h', error);
+          }
         }
-      }
 
-      // 2. Send reminder 15 mins before
-      if (minutesDiff > 0 && minutesDiff <= 15 && !appt.reminder15mSent && appt.status === 'pending') {
-        try {
-          addNotification({
-            title: `Cita en 15 minutos`,
-            message: `Atención: Cita con ${patient.name} a las ${appt.time} (${appt.treatmentType}).`,
-            type: 'warning'
-          });
-          updateAppointment(appt.id, { ...appt, reminder15mSent: true });
-        } catch (error) {
-          console.error('Error al generar notificación 15m', error);
+        // 2. Send reminder 15 mins before
+        if (minutesDiff > 0 && minutesDiff <= 15 && !appt.reminder15mSent && appt.status === 'pending') {
+          try {
+            addNotification({
+              title: `Cita en 15 minutos`,
+              message: `Atención: Cita con ${patient.name} a las ${formatTime(appt.time)} (${appt.treatmentType}).`,
+              type: 'warning',
+              category: 'appointment'
+            });
+            updateAppointment(appt.id, { ...appt, reminder15mSent: true });
+          } catch (error) {
+            console.error('Error al generar notificación 15m', error);
+          }
         }
-      }
 
-      // 3. Send unpaid reminder every 48 hours for completed unpaid appointments
-      if (appt.status === 'completed' && !appt.paid) {
-         const hoursSinceCompletion = (now.getTime() - apptDate.getTime()) / (1000 * 60 * 60);
-         const reminderLevel = Math.floor(hoursSinceCompletion / 48);
-         const currentLevel = appt.unpaidReminderLevel || 0;
-         
-         if (reminderLevel > 0 && reminderLevel > currentLevel) {
-           try {
-             addNotification({
-               title: `Pago Pendiente`,
-               message: `El paciente ${patient.name} tiene un pago pendiente desde la cita del ${appt.date}.`,
-               type: 'alert'
-             });
-             updateAppointment(appt.id, { ...appt, unpaidReminderLevel: reminderLevel });
-           } catch (error) {
-             console.error('Error al generar notificación de cobro', error);
+        // 3. Send unpaid reminder every 48 hours for completed unpaid appointments
+        if (appt.status === 'completed' && !appt.paid) {
+           const hoursSinceCompletion = (now.getTime() - apptDate.getTime()) / (1000 * 60 * 60);
+           const reminderLevel = Math.floor(hoursSinceCompletion / 48);
+           const currentLevel = appt.unpaidReminderLevel || 0;
+           
+           if (reminderLevel > 0 && reminderLevel > currentLevel) {
+             try {
+               addNotification({
+                 title: `Pago Pendiente`,
+                 message: `El paciente ${patient.name} tiene un pago pendiente desde la cita del ${appt.date}.`,
+                 type: 'alert'
+               });
+               updateAppointment(appt.id, { ...appt, unpaidReminderLevel: reminderLevel });
+             } catch (error) {
+               console.error('Error al generar notificación de cobro', error);
+             }
            }
-         }
-      }
-    });
-  }, [appointments, autoRemindersEnabled]);
+        }
+      });
+    };
+
+    checkReminders();
+    const interval = setInterval(checkReminders, 60000); // Check every 60 seconds
+
+    return () => clearInterval(interval);
+  }, [appointments, autoRemindersEnabled, patients, addNotification, updateAppointment]);
   
   const getReminderMessage = (patientName: string, treatmentType: string, time: string, type: '24h' | '15m' | 'manual' = 'manual') => {
     const name = (patientName || 'Paciente').split(' ')[0];
@@ -311,7 +320,7 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
                            appt.status === 'cancelled' ? "bg-red-50 border-red-200" : "bg-white border-blue-200 shadow-sm"
                          )}>
                            <div className="font-bold flex items-center justify-between mb-1">
-                             <span>{appt.time}</span>
+                             <span>{formatTime(appt.time)}</span>
                              {appt.paid && <DollarSign className="w-3 h-3 text-emerald-600" />}
                            </div>
                            <div className="font-semibold truncate text-[10px] md:text-xs">{(patient?.name || 'Privado').split(' ')[0]}</div>
@@ -349,7 +358,7 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
                 <div className="flex flex-row md:flex-col items-center justify-between md:justify-center w-full md:w-28 shrink-0 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0 md:pr-6 relative">
                   <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5 text-slate-400" />
-                    <span className="text-xl md:text-2xl font-bold text-slate-800">{appt.time}</span>
+                    <span className="text-xl md:text-2xl font-bold text-slate-800">{formatTime(appt.time)}</span>
                   </div>
                   {appt.reminderSent && appt.status === 'pending' && (
                     <div className="flex items-center gap-1 text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 text-[10px] font-semibold animate-pulse">
@@ -671,13 +680,13 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
                     <span className="flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" /> {
                       (function() {
                         try {
-                          return format(new Date(`${appt.date}T${appt.time}`), "dd MMM yyyy", { locale: es });
+                          return format(new Date(`${appt.date}T${formatTime(appt.time)}`), "dd MMM yyyy", { locale: es });
                         } catch (e) {
                           return appt.date || 'Sin fecha';
                         }
                       })()
                     }</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {appt.time}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatTime(appt.time)}</span>
                   </div>
                   <div className="text-xs text-slate-400 mt-1">{appt.treatmentType}</div>
                 </div>
