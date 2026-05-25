@@ -66,6 +66,38 @@ export function useAppState() {
       supabase.from('specialists').select('*')
     ]);
 
+    // TEMPORARY INJECTION - Se ejecuta una vez si es admin
+    if (activeSpecialistId === 'admin') {
+      const checkYarella = await supabase.from('specialists').select('id').ilike('name', '%Yarella%');
+      if (checkYarella.data && checkYarella.data.length === 0) {
+        console.log("Injecting Yarella patients...");
+        const yarellaId = 'esp-yarella-123';
+        await supabase.from('specialists').insert({ id: yarellaId, name: 'Yarella' });
+        
+        const dataToInsert = [
+          { name: 'Nelly', phone: '+56 9 8900 0230', time: '17:30' },
+          { name: 'Carmen Gloria', phone: '+56 9 5987 7839', time: '16:45' },
+          { name: 'Marioly Astete', phone: '+56 9 5678 5766', time: '16:00' },
+          { name: 'Héctor gallardo', phone: '+56 9 6842 8699', time: '15:00' }
+        ];
+
+        for (const p of dataToInsert) {
+          const pId = 'pat-yarella-' + p.time.replace(':','');
+          await supabase.from('patients').insert({
+            id: pId, name: p.name, phone: p.phone, email: '', notes: 'Añadido automáticamente', specialist_id: yarellaId
+          });
+          await supabase.from('appointments').insert({
+            id: 'apt-yarella-' + p.time.replace(':',''), patient_id: pId, specialist_id: yarellaId,
+            date: '2026-05-25', time: p.time, treatment_type: 'Consulta General', status: 'pending'
+          });
+        }
+        console.log("Injection complete! Fetching again...");
+        fetchTable('patients').then(res => setPatients(res.map((p: any) => ({ ...p, registeredAt: p.registered_at, lastVisit: p.last_visit, specialistId: p.specialist_id }))));
+        fetchTable('appointments').then(res => setAppointments(res.map((a: any) => ({ ...a, patientId: a.patient_id, treatmentType: a.treatment_type, paymentMethod: a.payment_method, reminderSent: a.reminder_sent, reminder15mSent: a.reminder_15m_sent, unpaidReminderLevel: a.unpaid_reminder_level, specialistId: a.specialist_id }))));
+      }
+    }
+
+
     let specialistsData = specs.data || [];
     if (activeSpecialistId && activeSpecialistId !== 'admin' && !specialistsData.find((s: any) => s.id === activeSpecialistId)) {
        await supabase.from('specialists').insert({ id: activeSpecialistId, name: 'Especialista' });
