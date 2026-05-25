@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabase';
 import { Patient, Appointment, Sale, AppointmentStatus, Notification as AppNotification, Treatment, Supply } from './types';
 
@@ -26,20 +26,21 @@ export function useAppState() {
   const [specialists, setSpecialists] = useState<{id: string, name: string}[]>([]);
   const [activeSpecialistId, setActiveSpecialistId] = useState<string>('');
 
+  // Throttle: avoid fetchData running more than once every 2s from realtime events
+  const fetchThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchData();
 
-    // Basic realtime setup
     const channel = supabase.channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-        fetchData();
+        if (fetchThrottleRef.current) clearTimeout(fetchThrottleRef.current);
+        fetchThrottleRef.current = setTimeout(() => fetchData(), 2000);
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [isAuthenticated, activeSpecialistId]);
 
   const fetchData = async () => {
@@ -65,38 +66,6 @@ export function useAppState() {
       fetchTable('supplies'),
       supabase.from('specialists').select('*')
     ]);
-
-    // TEMPORARY INJECTION - Se ejecuta una vez si es admin
-    if (activeSpecialistId === 'admin') {
-      const checkYarella = await supabase.from('specialists').select('id').ilike('name', '%Yarella%');
-      if (checkYarella.data && checkYarella.data.length === 0) {
-        console.log("Injecting Yarella patients...");
-        const yarellaId = 'esp-yarella-123';
-        await supabase.from('specialists').insert({ id: yarellaId, name: 'Yarella' });
-        
-        const dataToInsert = [
-          { name: 'Nelly', phone: '+56 9 8900 0230', time: '17:30' },
-          { name: 'Carmen Gloria', phone: '+56 9 5987 7839', time: '16:45' },
-          { name: 'Marioly Astete', phone: '+56 9 5678 5766', time: '16:00' },
-          { name: 'Héctor gallardo', phone: '+56 9 6842 8699', time: '15:00' }
-        ];
-
-        for (const p of dataToInsert) {
-          const pId = 'pat-yarella-' + p.time.replace(':','');
-          await supabase.from('patients').insert({
-            id: pId, name: p.name, phone: p.phone, email: '', notes: 'Añadido automáticamente', specialist_id: yarellaId
-          });
-          await supabase.from('appointments').insert({
-            id: 'apt-yarella-' + p.time.replace(':',''), patient_id: pId, specialist_id: yarellaId,
-            date: '2026-05-25', time: p.time, treatment_type: 'Consulta General', status: 'pending'
-          });
-        }
-        console.log("Injection complete! Fetching again...");
-        fetchTable('patients').then(res => setPatients(res.map((p: any) => ({ ...p, registeredAt: p.registered_at, lastVisit: p.last_visit, specialistId: p.specialist_id }))));
-        fetchTable('appointments').then(res => setAppointments(res.map((a: any) => ({ ...a, patientId: a.patient_id, treatmentType: a.treatment_type, paymentMethod: a.payment_method, reminderSent: a.reminder_sent, reminder15mSent: a.reminder_15m_sent, unpaidReminderLevel: a.unpaid_reminder_level, specialistId: a.specialist_id }))));
-      }
-    }
-
 
     let specialistsData = specs.data || [];
     if (activeSpecialistId && activeSpecialistId !== 'admin' && !specialistsData.find((s: any) => s.id === activeSpecialistId)) {
@@ -124,10 +93,15 @@ export function useAppState() {
     }
   };
 
-  const addNotification = (notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
-    const newNotif: AppNotification = { ...notif, id: Date.now().toString(), timestamp: new Date().toISOString(), read: false };
-    setNotifications(prev => [newNotif, ...prev]);
-    fireNativeNotification(newNotif.title, newNotif.message);
+  const addNotification = (notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'> & { sourceId?: string }) => {
+    setNotifications(prev => {
+      // Deduplication: if a notification with the same sourceId already exists, ignore it
+      if (notif.sourceId && prev.some(n => n.id === notif.sourceId)) return prev;
+      const id = notif.sourceId || Date.now().toString();
+      const newNotif: AppNotification = { ...notif, id, timestamp: new Date().toISOString(), read: false };
+      fireNativeNotification(newNotif.title, newNotif.message);
+      return [newNotif, ...prev.slice(0, 49)]; // Keep max 50 notifications
+    });
   };
   const markAsRead = (id: string) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   const clearRead = () => setNotifications(prev => prev.filter(n => !n.read));

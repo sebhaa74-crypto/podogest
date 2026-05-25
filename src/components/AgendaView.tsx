@@ -53,8 +53,9 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
         // 1. Reminder 24 h before
         if (hoursDiff > 0 && hoursDiff <= 24 && !appt.reminderSent && appt.status === 'pending') {
           addNotificationRef.current({
-            title: 'Cita Próxima (24h)',
-            message: `Mañana a las ${formatTime(appt.time)} con ${patient.name} (${appt.treatmentType}).`,
+            sourceId: `reminder-24h-${appt.id}`,
+            title: 'Cita Próxima — Mañana',
+            message: `${patient.name} tiene cita mañana a las ${formatTime(appt.time)} · ${appt.treatmentType || 'Consulta'}.`,
             type: 'info',
             category: 'appointment'
           });
@@ -64,8 +65,9 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
         // 2. Reminder 15 min before
         if (minutesDiff > 0 && minutesDiff <= 15 && !appt.reminder15mSent && appt.status === 'pending') {
           addNotificationRef.current({
-            title: 'Cita en 15 minutos',
-            message: `Atención: Cita con ${patient.name} a las ${formatTime(appt.time)} (${appt.treatmentType}).`,
+            sourceId: `reminder-15m-${appt.id}`,
+            title: '⏰ Cita en 15 minutos',
+            message: `${patient.name} llega a las ${formatTime(appt.time)} · ${appt.treatmentType || 'Consulta'}.`,
             type: 'warning',
             category: 'appointment'
           });
@@ -79,8 +81,9 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
           const currentLevel = appt.unpaidReminderLevel || 0;
           if (reminderLevel > 0 && reminderLevel > currentLevel) {
             addNotificationRef.current({
+              sourceId: `reminder-unpaid-${appt.id}-lvl${reminderLevel}`,
               title: 'Pago Pendiente',
-              message: `${patient.name} tiene un pago pendiente desde la cita del ${appt.date}.`,
+              message: `${patient.name} tiene un pago pendiente desde el ${appt.date}.`,
               type: 'alert',
               category: 'payment'
             });
