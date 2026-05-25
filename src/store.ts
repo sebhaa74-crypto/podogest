@@ -174,11 +174,18 @@ export function useAppState() {
 
   const updateAppointment = async (id: string, updates: any) => {
     const snakeUpdates: any = {};
-    if (updates.date) snakeUpdates.date = updates.date;
-    if (updates.time) snakeUpdates.time = updates.time;
-    if (updates.treatmentType) snakeUpdates.treatment_type = updates.treatmentType;
-    if (updates.notes) snakeUpdates.notes = updates.notes;
-    if (updates.cost) snakeUpdates.cost = updates.cost;
+    if (updates.date !== undefined) snakeUpdates.date = updates.date;
+    if (updates.time !== undefined) snakeUpdates.time = updates.time;
+    if (updates.treatmentType !== undefined) snakeUpdates.treatment_type = updates.treatmentType;
+    if (updates.notes !== undefined) snakeUpdates.notes = updates.notes;
+    if (updates.cost !== undefined) snakeUpdates.cost = updates.cost;
+    if (updates.status !== undefined) snakeUpdates.status = updates.status;
+    if (updates.paid !== undefined) snakeUpdates.paid = updates.paid;
+    if (updates.paymentMethod !== undefined) snakeUpdates.payment_method = updates.paymentMethod;
+    if (updates.reminderSent !== undefined) snakeUpdates.reminder_sent = updates.reminderSent;
+    if (updates.reminder15mSent !== undefined) snakeUpdates.reminder_15m_sent = updates.reminder15mSent;
+    if (updates.unpaidReminderLevel !== undefined) snakeUpdates.unpaid_reminder_level = updates.unpaidReminderLevel;
+    
     await supabase.from('appointments').update(snakeUpdates).eq('id', id);
     await fetchData();
   };
