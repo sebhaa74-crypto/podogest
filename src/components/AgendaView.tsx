@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppState } from '../store';
 import { Calendar as CalendarIcon, Clock, User, CheckCircle, XCircle, Plus, Edit2, MessageCircle, ChevronLeft, ChevronRight, DollarSign, Bell, Search, Filter, Trash2 } from 'lucide-react';
 import { cn, formatCurrency, formatTime } from '../lib/utils';
@@ -26,76 +26,74 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
   const [filterTreatment, setFilterTreatment] = useState('');
   const [filterPayment, setFilterPayment] = useState<'all' | 'paid' | 'unpaid'>('all');
 
-    // Auto-send reminders simulation
+  // Keep live refs so the interval can always read latest data WITHOUT restarting on every change
+  const appointmentsRef = useRef(appointments);
+  const patientsRef = useRef(patients);
+  const addNotificationRef = useRef(addNotification);
+  const updateAppointmentRef = useRef(updateAppointment);
+  useEffect(() => { appointmentsRef.current = appointments; }, [appointments]);
+  useEffect(() => { patientsRef.current = patients; }, [patients]);
+  useEffect(() => { addNotificationRef.current = addNotification; }, [addNotification]);
+  useEffect(() => { updateAppointmentRef.current = updateAppointment; }, [updateAppointment]);
+
+  // Auto-send reminders — interval only restarts when autoRemindersEnabled toggles
   useEffect(() => {
     if (!autoRemindersEnabled) return;
 
     const checkReminders = () => {
       const now = new Date();
-      appointments.forEach((appt) => {
+      appointmentsRef.current.forEach((appt) => {
         const apptDate = new Date(`${appt.date}T${formatTime(appt.time)}:00`);
         const hoursDiff = (apptDate.getTime() - now.getTime()) / (1000 * 60 * 60);
         const minutesDiff = (apptDate.getTime() - now.getTime()) / (1000 * 60);
-        const patient = patients.find(p => p.id === appt.patientId);
-        
+        const patient = patientsRef.current.find(p => p.id === appt.patientId);
+
         if (!patient) return;
 
-        // 1. Send reminder 24 hours before
+        // 1. Reminder 24 h before
         if (hoursDiff > 0 && hoursDiff <= 24 && !appt.reminderSent && appt.status === 'pending') {
-          try {
-            addNotification({
-              title: `Cita Próxima (24h)`,
-              message: `Mañana a las ${formatTime(appt.time)} con ${patient.name} (${appt.treatmentType}).`,
-              type: 'info'
-            });
-            updateAppointment(appt.id, { ...appt, reminderSent: true });
-          } catch (error) {
-            console.error('Error al generar notificación 24h', error);
-          }
+          addNotificationRef.current({
+            title: 'Cita Próxima (24h)',
+            message: `Mañana a las ${formatTime(appt.time)} con ${patient.name} (${appt.treatmentType}).`,
+            type: 'info',
+            category: 'appointment'
+          });
+          updateAppointmentRef.current(appt.id, { ...appt, reminderSent: true });
         }
 
-        // 2. Send reminder 15 mins before
+        // 2. Reminder 15 min before
         if (minutesDiff > 0 && minutesDiff <= 15 && !appt.reminder15mSent && appt.status === 'pending') {
-          try {
-            addNotification({
-              title: `Cita en 15 minutos`,
-              message: `Atención: Cita con ${patient.name} a las ${formatTime(appt.time)} (${appt.treatmentType}).`,
-              type: 'warning',
-              category: 'appointment'
-            });
-            updateAppointment(appt.id, { ...appt, reminder15mSent: true });
-          } catch (error) {
-            console.error('Error al generar notificación 15m', error);
-          }
+          addNotificationRef.current({
+            title: 'Cita en 15 minutos',
+            message: `Atención: Cita con ${patient.name} a las ${formatTime(appt.time)} (${appt.treatmentType}).`,
+            type: 'warning',
+            category: 'appointment'
+          });
+          updateAppointmentRef.current(appt.id, { ...appt, reminder15mSent: true });
         }
 
-        // 3. Send unpaid reminder every 48 hours for completed unpaid appointments
+        // 3. Unpaid reminder every 48 h
         if (appt.status === 'completed' && !appt.paid) {
-           const hoursSinceCompletion = (now.getTime() - apptDate.getTime()) / (1000 * 60 * 60);
-           const reminderLevel = Math.floor(hoursSinceCompletion / 48);
-           const currentLevel = appt.unpaidReminderLevel || 0;
-           
-           if (reminderLevel > 0 && reminderLevel > currentLevel) {
-             try {
-               addNotification({
-                 title: `Pago Pendiente`,
-                 message: `El paciente ${patient.name} tiene un pago pendiente desde la cita del ${appt.date}.`,
-                 type: 'alert'
-               });
-               updateAppointment(appt.id, { ...appt, unpaidReminderLevel: reminderLevel });
-             } catch (error) {
-               console.error('Error al generar notificación de cobro', error);
-             }
-           }
+          const hoursSinceCompletion = (now.getTime() - apptDate.getTime()) / (1000 * 60 * 60);
+          const reminderLevel = Math.floor(hoursSinceCompletion / 48);
+          const currentLevel = appt.unpaidReminderLevel || 0;
+          if (reminderLevel > 0 && reminderLevel > currentLevel) {
+            addNotificationRef.current({
+              title: 'Pago Pendiente',
+              message: `${patient.name} tiene un pago pendiente desde la cita del ${appt.date}.`,
+              type: 'alert',
+              category: 'payment'
+            });
+            updateAppointmentRef.current(appt.id, { ...appt, unpaidReminderLevel: reminderLevel });
+          }
         }
       });
     };
 
-    checkReminders();
-    const interval = setInterval(checkReminders, 60000); // Check every 60 seconds
-
+    // First check happens after 60s, NOT immediately on mount, to avoid false positives on page load
+    const interval = setInterval(checkReminders, 60000);
     return () => clearInterval(interval);
-  }, [appointments, autoRemindersEnabled, patients, addNotification, updateAppointment]);
+  }, [autoRemindersEnabled]);
   
   const getReminderMessage = (patientName: string, treatmentType: string, time: string, type: '24h' | '15m' | 'manual' = 'manual') => {
     const name = (patientName || 'Paciente').split(' ')[0];
