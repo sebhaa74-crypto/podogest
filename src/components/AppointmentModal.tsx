@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Trash2, Calendar, Clock, User, DollarSign, Activity, ChevronDown } from 'lucide-react';
 import { Appointment, Patient, Treatment } from '../types';
 import { motion } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, formatTime } from '../lib/utils';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface AppointmentModalProps {
@@ -75,7 +75,7 @@ export function AppointmentModal({
       const conflicting = appointments.find(a =>
         a.id !== appointment?.id &&
         a.date === formData.date &&
-        a.time === timeString &&
+        formatTime(a.time) === timeString &&
         a.status !== 'cancelled'
       );
 
@@ -134,7 +134,7 @@ export function AppointmentModal({
     const overlappingAppointment = appointments.find(a => 
       a.id !== appointment?.id && 
       a.date === formData.date && 
-      a.time === formData.time &&
+      formatTime(a.time) === formData.time &&
       a.status !== 'cancelled'
     );
 
