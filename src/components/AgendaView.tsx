@@ -348,229 +348,246 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
     );
   };
 
-  const renderDayView = () => (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[500px]">
-      {dailyAppointments.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-slate-500 flex-col gap-4">
-           <CalendarIcon className="w-16 h-16 text-slate-300" />
-           <p>No hay citas programadas para esta fecha.</p>
-        </div>
-      ) : (
-        <div className="p-4 space-y-4">
-          {dailyAppointments.map(appt => {
-            const patient = patients.find(p => p.id === appt.patientId);
-            return (
-              <div key={appt.id} className={cn(
-                "border p-5 rounded-xl flex flex-col md:flex-row gap-6 shadow-sm",
-                 appt.status === 'completed' ? "border-emerald-200 bg-emerald-50/30" :
-                 appt.status === 'cancelled' ? "border-red-200 bg-red-50/30" : "border-slate-200 bg-white"
-              )}>
-                <div className="flex flex-row md:flex-col items-center justify-between md:justify-center w-full md:w-28 shrink-0 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0 md:pr-6 relative">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-slate-400" />
-                    <span className="text-xl md:text-2xl font-bold text-slate-800">{formatTime(appt.time)}</span>
-                  </div>
-                  {appt.reminderSent && appt.status === 'pending' && (
-                    <div className="flex items-center gap-1 text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 text-[10px] font-semibold animate-pulse">
-                      <Bell className="w-3.5 h-3.5" /> Recordatorio enviado
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
-                     <User className="w-5 h-5 text-emerald-600" />
-                     <h4 className="text-lg font-semibold text-slate-800">{patient?.name || 'Paciente Privado'}</h4>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                     <span className="text-slate-500 font-medium text-sm md:text-base">{appt.treatmentType}</span>
-                     {appt.specialistId && (
-                       <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                         {state.specialists.find(s => s.id === appt.specialistId)?.name || 'Especialista'}
-                       </span>
-                     )}
-                  </div>
-                  {appt.notes && <p className="text-sm text-slate-400 italic">Notas: {appt.notes}</p>}
-                  <div className="flex flex-wrap gap-2 items-center pt-1">
-                    <p className="text-sm font-medium text-emerald-700 bg-emerald-100 w-fit px-2 py-0.5 rounded">
-                      Costo: {formatCurrency(appt.cost)}
-                    </p>
-                    <button 
-                      onClick={() => {
-                        if (state.activeSpecialistId === 'admin' || !appt.specialistId || appt.specialistId === state.activeSpecialistId) {
-                          handleTogglePaid(appt);
-                        }
-                      }}
-                      className={cn(
-                        "text-xs font-bold px-2 py-1 rounded w-fit flex items-center gap-1 transition-colors border",
-                        appt.paid ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-orange-50 text-orange-700 border-orange-200",
-                        (state.activeSpecialistId === 'admin' || !appt.specialistId || appt.specialistId === state.activeSpecialistId) && "hover:bg-orange-100 cursor-pointer"
-                      )}
-                    >
-                      {appt.paid ? <><CheckCircle className="w-3 h-3"/> Pagado</> : <><Clock className="w-3 h-3"/> Pago Pendiente</>}
-                    </button>
-                    {appt.paid && (
-                      <select 
-                        value={appt.paymentMethod || 'cash'}
-                        onChange={(e) => updateAppointment(appt.id, { paymentMethod: e.target.value as 'cash' | 'transfer' })}
-                        className="text-xs font-medium bg-white border border-slate-200 text-slate-700 px-2 py-1 rounded outline-none focus:ring-1 focus:ring-emerald-500"
-                      >
-                        <option value="cash">Efectivo</option>
-                        <option value="transfer">Transferencia</option>
-                      </select>
-                    )}
-                    {appt.reminderSent && !appt.paid && (
-                       <span className="text-xs font-bold px-2 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
-                         <MessageCircle className="w-3 h-3" /> WhatsApp Auto
-                       </span>
-                    )}
-                  </div>
-                </div>
+  // Premium avatar initials helper
+  const getInitials = (name: string) => {
+    const parts = (name || 'P').split(' ').filter(Boolean);
+    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : parts[0]?.slice(0, 2) || 'P';
+  };
 
-                <div className="flex flex-col gap-2 shrink-0 justify-center min-w-[200px]">
-                   {state.activeSpecialistId !== 'admin' && appt.specialistId && appt.specialistId !== state.activeSpecialistId ? (
-                     <div className="bg-slate-100 text-slate-500 font-medium px-4 py-3 rounded-xl text-center text-sm border border-slate-200 flex flex-col gap-1 items-center justify-center h-full">
-                       <Clock className="w-5 h-5 opacity-50 mb-1" />
-                       Solo lectura
-                     </div>
-                   ) : (
-                     <>
-                       {appt.status === 'pending' && (
-                         <>
-                           <button 
-                              onClick={() => handleStatusChange(appt.id, 'completed', appt.cost, appt.paid, appt)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-                            >
-                              <CheckCircle className="w-4 h-4" /> Finalizar
-                           </button>
-                           {!appt.reminderSent ? (
-                             <div className="flex gap-2">
-                               <button 
-                                  onClick={() => handleManualReminder(appt)}
-                                  className="flex-1 bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20 px-2 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all text-center"
-                                >
-                                  <MessageCircle className="w-4 h-4 shrink-0" /> WhatsApp
-                               </button>
-                               <button 
-                                  onClick={() => updateAppointment(appt.id, { reminderSent: true })}
-                                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-2 rounded-xl text-xs font-bold flex items-center justify-center transition-all text-center"
-                                >
-                                  Marcar Enviado
-                               </button>
-                             </div>
-                           ) : (
-                             <button 
-                                onClick={() => updateAppointment(appt.id, { reminderSent: false })}
-                                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all"
-                              >
-                                <XCircle className="w-4 h-4 shrink-0" /> Deshacer Recordatorio
-                             </button>
-                           )}
-                           <div className="flex gap-2">
-                             <button 
-                                onClick={() => setSelectedAppointment(appt)}
-                                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
-                              >
-                                <Edit2 className="w-3 h-3" /> Editar
-                             </button>
-                             <button 
-                                onClick={() => setAppointmentToCancel(appt)}
-                                className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 px-2 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
-                              >
-                                <XCircle className="w-3 h-3" /> Cancelar
-                             </button>
-                           </div>
-                         </>
-                       )}
-                       {appt.status === 'completed' && (
-                         <div className="flex flex-col gap-2">
-                           <div className="text-emerald-700 text-sm font-medium flex items-center justify-center gap-1.5 bg-emerald-100 px-3 py-2 rounded-xl text-center">
-                             <CheckCircle className="w-4 h-4 shrink-0" /> <span className="leading-tight">Tratamiento Finalizado</span>
-                           </div>
-                           <button
-                             onClick={() => handleStatusChange(appt.id, 'pending', appt.cost, appt.paid, appt)}
-                             className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-colors"
-                           >
-                             <Clock className="w-3.5 h-3.5" /> Revertir
-                           </button>
-                           <button
-                             onClick={() => setAppointmentToDelete(appt)}
-                             className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-colors"
-                           >
-                             <Trash2 className="w-3.5 h-3.5" /> Eliminar Registro
-                           </button>
-                         </div>
-                       )}
-                       {appt.status === 'cancelled' && (
-                          <div className="flex flex-col gap-2">
-                            <div className="text-red-700 font-medium flex items-center justify-center gap-2 bg-red-100 px-4 py-2 rounded-xl">
-                              <XCircle className="w-5 h-5" /> Cita Cancelada
+  const STATUS_CONFIG = {
+    pending:   { bg: 'bg-amber-50',   border: 'border-amber-200',   bar: 'bg-amber-400',   label: 'Pendiente',  labelBg: 'bg-amber-100 text-amber-800'   },
+    completed: { bg: 'bg-emerald-50', border: 'border-emerald-200', bar: 'bg-emerald-500', label: 'Finalizado', labelBg: 'bg-emerald-100 text-emerald-800' },
+    cancelled: { bg: 'bg-red-50',     border: 'border-red-200',     bar: 'bg-red-400',     label: 'Cancelada',  labelBg: 'bg-red-100 text-red-700'       },
+  };
+
+  const renderDayView = () => {
+    return (
+      <div className="flex flex-col gap-3">
+        {dailyAppointments.length > 0 && (
+          <div className="flex items-center gap-3 px-1">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+              {dailyAppointments.length} cita{dailyAppointments.length > 1 ? 's' : ''} · {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
+            </span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+        )}
+
+        {dailyAppointments.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 py-16 px-6">
+            <div className="w-20 h-20 rounded-2xl bg-slate-50 flex items-center justify-center">
+              <CalendarIcon className="w-10 h-10 text-slate-300" />
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-slate-600 text-base">Sin citas para este día</p>
+              <p className="text-slate-400 text-sm mt-1">Toca Nueva Cita para agendar</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {dailyAppointments.map((appt) => {
+              const patient = patients.find(p => p.id === appt.patientId);
+              const cfg = STATUS_CONFIG[appt.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
+              const initials = getInitials(patient?.name || 'P');
+              const specialist = state.specialists.find(s => s.id === appt.specialistId);
+              const isOwner = state.activeSpecialistId === 'admin' || !appt.specialistId || appt.specialistId === state.activeSpecialistId;
+              const apptDateTime = new Date(`${appt.date}T${formatTime(appt.time)}:00`);
+              const minsAway = (apptDateTime.getTime() - Date.now()) / 60000;
+              const isUrgent = minsAway > 0 && minsAway <= 30 && appt.status === 'pending';
+              const isNow = minsAway > -30 && minsAway <= 0 && appt.status === 'pending';
+              return (
+                <div key={appt.id} className={cn(
+                  'relative rounded-2xl border overflow-hidden transition-all',
+                  cfg.bg, cfg.border,
+                  isUrgent && 'ring-2 ring-amber-400 ring-offset-1',
+                  isNow && 'ring-2 ring-emerald-500 ring-offset-1'
+                )}>
+                  <div className={cn('absolute left-0 top-0 bottom-0 w-1.5', cfg.bar)} />
+                  <div className="pl-5 pr-4 pt-4 pb-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex flex-col items-center justify-center bg-white rounded-xl px-3 py-1.5 shadow-sm border border-slate-100 min-w-[64px] shrink-0">
+                          <span className="text-2xl font-black text-slate-800 leading-none tracking-tight">{formatTime(appt.time)}</span>
+                          {isNow && <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Ahora</span>}
+                          {isUrgent && !isNow && <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">{Math.round(minsAway)}m</span>}
+                        </div>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={cn(
+                            'w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-sm',
+                            appt.status === 'completed' ? 'bg-emerald-600 text-white' :
+                            appt.status === 'cancelled' ? 'bg-red-400 text-white' : 'bg-emerald-700 text-white'
+                          )}>
+                            {initials.toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 text-base leading-tight truncate">{patient?.name || 'Paciente Privado'}</p>
+                            <p className="text-slate-500 text-sm truncate">{appt.treatmentType || 'Consulta'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <span className={cn('text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide shrink-0', cfg.labelBg)}>
+                        {cfg.label}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <span className={cn(
+                        'text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1',
+                        appt.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-50 text-orange-600 border border-orange-200'
+                      )}>
+                        <DollarSign className="w-3 h-3" />{formatCurrency(appt.cost)}{appt.paid ? ' · Pagado' : ' · Sin pagar'}
+                      </span>
+                      {specialist && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 flex items-center gap-1">
+                          <User className="w-3 h-3" /> {specialist.name.split(' ')[0]}
+                        </span>
+                      )}
+                      {appt.reminderSent && appt.status === 'pending' && (
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-700 flex items-center gap-1">
+                          <Bell className="w-3 h-3" /> Recordatorio
+                        </span>
+                      )}
+                      {patient?.phone && (
+                        <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500">{patient.phone}</span>
+                      )}
+                    </div>
+
+                    {appt.notes && (
+                      <p className="text-xs text-slate-400 italic bg-white/60 px-3 py-2 rounded-lg border border-slate-100 mb-3">
+                        Notas: {appt.notes}
+                      </p>
+                    )}
+
+                    {isOwner ? (
+                      <div className="flex flex-col gap-2">
+                        {appt.status === 'pending' && (
+                          <>
+                            <button onClick={() => handleStatusChange(appt.id, 'completed', appt.cost, appt.paid, appt)}
+                              className="w-full bg-emerald-600 active:bg-emerald-700 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-all">
+                              <CheckCircle className="w-4 h-4" /> Marcar como Finalizada
+                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button onClick={() => handleTogglePaid(appt)}
+                                className={cn('py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all',
+                                  appt.paid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-orange-50 text-orange-600 border-orange-200')}>
+                                <DollarSign className="w-3.5 h-3.5" />{appt.paid ? 'Pagado' : 'Cobrar'}
+                              </button>
+                              {!appt.reminderSent ? (
+                                <button onClick={() => handleManualReminder(appt)}
+                                  className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-[#25D366]/10 text-[#128C7E] border border-[#25D366]/30">
+                                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                                </button>
+                              ) : (
+                                <button onClick={() => updateAppointment(appt.id, { reminderSent: false })}
+                                  className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200">
+                                  <XCircle className="w-3.5 h-3.5" /> Deshacer
+                                </button>
+                              )}
                             </div>
-                            <button
-                              onClick={() => setAppointmentToDelete(appt)}
-                              className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
-                            >
-                              <Trash2 className="w-4 h-4" /> Eliminar Registro
+                            <div className="grid grid-cols-2 gap-2">
+                              <button onClick={() => setSelectedAppointment(appt)}
+                                className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-slate-100 text-slate-700 border border-slate-200">
+                                <Edit2 className="w-3.5 h-3.5" /> Editar
+                              </button>
+                              <button onClick={() => setAppointmentToCancel(appt)}
+                                className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-200">
+                                <XCircle className="w-3.5 h-3.5" /> Cancelar
+                              </button>
+                            </div>
+                            {appt.paid && (
+                              <select value={appt.paymentMethod || 'cash'}
+                                onChange={(e) => updateAppointment(appt.id, { paymentMethod: e.target.value as 'cash' | 'transfer' })}
+                                className="py-2.5 px-3 text-xs font-semibold border border-slate-200 rounded-xl bg-white text-slate-700 outline-none">
+                                <option value="cash">Efectivo</option>
+                                <option value="transfer">Transferencia</option>
+                              </select>
+                            )}
+                          </>
+                        )}
+                        {appt.status === 'completed' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <button onClick={() => handleStatusChange(appt.id, 'pending', appt.cost, appt.paid, appt)}
+                              className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-slate-100 text-slate-700 border border-slate-200">
+                              <Clock className="w-3.5 h-3.5" /> Revertir
+                            </button>
+                            <button onClick={() => handleTogglePaid(appt)}
+                              className={cn('py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border',
+                                appt.paid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-orange-50 text-orange-600 border-orange-200')}>
+                              <DollarSign className="w-3.5 h-3.5" />{appt.paid ? 'Pagado' : 'Cobrar'}
+                            </button>
+                            <button onClick={() => setAppointmentToDelete(appt)}
+                              className="col-span-2 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-200">
+                              <Trash2 className="w-3.5 h-3.5" /> Eliminar Registro
                             </button>
                           </div>
                         )}
-                     </>
-                   )}
+                        {appt.status === 'cancelled' && (
+                          <button onClick={() => setAppointmentToDelete(appt)}
+                            className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-200">
+                            <Trash2 className="w-3.5 h-3.5" /> Eliminar Registro
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-slate-100 text-slate-500 font-medium px-4 py-3 rounded-xl text-center text-sm border border-slate-200 flex items-center justify-center gap-2">
+                        <Clock className="w-4 h-4 opacity-50" /> Solo lectura
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
 
   return (
-    <div className="p-4 md:p-8 space-y-6 animate-in fade-in duration-500 min-h-full">
-      <div className="flex flex-col md:flex-row justify-between md:items-center bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm select-none gap-4">
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight text-slate-800 capitalize">
-            {viewMode === 'day' && format(selectedDate, "d 'de' MMMM, yyyy", { locale: es })}
-            {viewMode === 'week' && `Semana del ${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "d MMM")} al ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), "d MMM")}`}
-            {viewMode === 'month' && format(selectedDate, "MMMM yyyy", { locale: es })}
-          </h2>
-          <p className="text-slate-500 mt-1">Controla tus citas diarias y estado de tratamientos.</p>
+    <div className="p-3 md:p-8 space-y-4 md:space-y-6 animate-in fade-in duration-500 min-h-full">
+      {/* ── PREMIUM MOBILE HEADER ──────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Date + view nav */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <button onClick={handlePrev} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 active:bg-slate-200 transition-colors">
+            <ChevronLeft className="w-5 h-5 text-slate-600" />
+          </button>
+          <div className="text-center flex-1 px-2">
+            <h2 className="text-base font-bold tracking-tight text-slate-800 capitalize leading-tight">
+              {viewMode === 'day' && format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
+              {viewMode === 'week' && `${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'd MMM')} — ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'd MMM yyyy')}`}
+              {viewMode === 'month' && format(selectedDate, 'MMMM yyyy', { locale: es })}
+            </h2>
+            {viewMode === 'day' && isToday(selectedDate) && (
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Hoy</span>
+            )}
+          </div>
+          <button onClick={handleNext} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 active:bg-slate-200 transition-colors">
+            <ChevronRight className="w-5 h-5 text-slate-600" />
+          </button>
         </div>
-        <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center w-full xl:w-auto mt-4 md:mt-0">
-          <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
-            <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-start">
-              <button onClick={handlePrev} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 flex-1 sm:flex-none flex justify-center"><ChevronLeft className="w-5 h-5 text-slate-600" /></button>
-              <button onClick={handleToday} className="px-4 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium text-slate-700 flex-1 sm:flex-none">Hoy</button>
-              <button onClick={handleNext} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 flex-1 sm:flex-none flex justify-center"><ChevronRight className="w-5 h-5 text-slate-600" /></button>
-            </div>
-            
-            <div className="flex bg-slate-100 p-1 rounded-lg w-full sm:w-auto overflow-auto justify-between sm:justify-start">
-              <button onClick={() => setViewMode('day')} className={cn("px-4 py-1.5 rounded-md text-sm font-semibold transition-colors flex-1 sm:flex-none text-center", viewMode === 'day' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Día</button>
-              <button onClick={() => setViewMode('week')} className={cn("px-4 py-1.5 rounded-md text-sm font-semibold transition-colors flex-1 sm:flex-none text-center", viewMode === 'week' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Semana</button>
-              <button onClick={() => setViewMode('month')} className={cn("px-4 py-1.5 rounded-md text-sm font-semibold transition-colors flex-1 sm:flex-none text-center", viewMode === 'month' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}>Mes</button>
-            </div>
-          </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 xl:ml-2 xl:border-l border-slate-200 xl:pl-6 w-full xl:w-auto pt-4 xl:pt-0 border-t xl:border-t-0">
-            <button 
-              onClick={() => {
-                setIsAdding(true);
-                setIsAddingNewPatient(false);
-              }}
-              className="bg-white border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex flex-1 items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap"
-            >
-              <CalendarIcon className="w-5 h-5 shrink-0" /> Nueva Cita
-            </button>
-            <button 
-              onClick={() => {
-                setIsAdding(true);
-                setIsAddingNewPatient(true);
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex flex-1 items-center justify-center gap-2 shadow-sm transition-all whitespace-nowrap"
-            >
-              <User className="w-5 h-5 shrink-0" /> Nuevo Paciente
-            </button>
+        {/* View mode switcher + Today + Actions */}
+        <div className="flex items-center gap-2 px-3 py-2.5">
+          <div className="flex bg-slate-100 p-0.5 rounded-xl flex-1">
+            {(['day', 'week', 'month'] as const).map(mode => (
+              <button key={mode} onClick={() => setViewMode(mode)}
+                className={cn('flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center',
+                  viewMode === mode ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                )}>
+                {mode === 'day' ? 'Día' : mode === 'week' ? 'Semana' : 'Mes'}
+              </button>
+            ))}
           </div>
+          <button onClick={handleToday}
+            className="px-3 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl active:bg-emerald-100 transition-colors whitespace-nowrap">
+            Hoy
+          </button>
+          <button onClick={() => { setIsAdding(true); setIsAddingNewPatient(false); }}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-emerald-600 active:bg-emerald-700 text-white shadow-sm transition-colors shrink-0">
+            <Plus className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
