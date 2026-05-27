@@ -327,46 +327,46 @@ export function AppointmentModal({
               <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                 <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>Hora *</span>
-                {formData.time && (
-                  <span className="ml-auto text-emerald-600 font-black text-sm">{formData.time}</span>
-                )}
               </label>
+
+              {/* Selected time display */}
+              {formData.time && !isCustomTime && (
+                <div className="mb-2 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-sm font-black text-emerald-700">Hora seleccionada: {formData.time}</span>
+                </div>
+              )}
 
               {/* Visual time grid */}
               <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                {/* Legend */}
-                <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-200 bg-white">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Disponible</span>
+                {/* Compact legend */}
+                <div className="flex items-center gap-4 px-3 py-2 border-b border-slate-100 bg-white">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Referencias:</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-[10px] font-semibold text-slate-500">Libre</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-400" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Ocupado</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400 shrink-0" />
+                    <span className="text-[10px] font-semibold text-slate-500">Ocupado</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-emerald-700" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Seleccionado</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-700 shrink-0" />
+                    <span className="text-[10px] font-semibold text-slate-500">Elegido</span>
                   </div>
                 </div>
 
                 {/* Hour groups */}
-                <div className="max-h-52 overflow-y-auto p-2 space-y-2">
+                <div className="max-h-56 overflow-y-auto p-2 space-y-3">
                   {Array.from({ length: 14 }, (_, i) => i + 8).map(hour => {
-                    const hourSlots = availableTimes.filter(t => t.time.startsWith(`${hour.toString().padStart(2,'0')}:`));
+                    const hourSlots = availableTimes.filter(t => t.time.startsWith(`${hour.toString().padStart(2, '0')}:`));
                     if (hourSlots.length === 0) return null;
-                    const hasAvailable = hourSlots.some(s => s.isAvailable);
-                    const hasOccupied = hourSlots.some(s => !s.isAvailable);
                     return (
                       <div key={hour}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            {hour.toString().padStart(2,'0')}:00
-                          </span>
-                          {hasOccupied && <span className="text-[9px] font-bold text-red-400 bg-red-50 px-1.5 py-0.5 rounded-full">Ocupado</span>}
-                          {hasAvailable && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Disponible</span>}
-                        </div>
-                        <div className="grid grid-cols-4 gap-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 pl-0.5">
+                          {hour.toString().padStart(2, '0')}:00 hs
+                        </p>
+                        <div className="grid grid-cols-4 gap-1.5">
                           {hourSlots.map(({ time, isAvailable, bookedBy, bookedByInitials }) => {
                             const isSelected = formData.time === time;
                             return (
@@ -378,22 +378,24 @@ export function AppointmentModal({
                                   setIsCustomTime(false);
                                   setFormData({ ...formData, time });
                                 }}
-                                title={!isAvailable ? `Ocupado: ${bookedBy || 'Paciente agendado'}` : `Seleccionar ${time}`}
+                                title={!isAvailable ? `Ocupado por: ${bookedBy || 'otro paciente'}` : `Agendar a las ${time}`}
                                 className={cn(
-                                  'relative flex flex-col items-center justify-center py-1.5 rounded-lg text-[11px] font-bold transition-all border',
+                                  'flex flex-col items-center justify-center py-2 rounded-xl text-[11px] font-bold transition-all border select-none',
                                   isSelected
-                                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-md scale-105'
+                                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-lg ring-2 ring-emerald-400 ring-offset-1'
                                     : isAvailable
-                                      ? 'bg-white text-slate-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700 active:scale-95'
-                                      : 'bg-red-50 text-red-400 border-red-200 cursor-not-allowed opacity-80'
+                                      ? 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 active:scale-95'
+                                      : 'bg-red-50 text-red-300 border-red-100 cursor-not-allowed'
                                 )}
                               >
-                                <span>{time}</span>
-                                {!isAvailable && bookedByInitials && (
-                                  <span className="text-[8px] font-black opacity-70 mt-0.5">{bookedByInitials}</span>
+                                <span className="leading-none">{time}</span>
+                                {!isAvailable && (
+                                  <span className="text-[8px] font-black mt-0.5 leading-none opacity-70">
+                                    {bookedByInitials || '✕'}
+                                  </span>
                                 )}
                                 {isSelected && (
-                                  <span className="text-[8px] opacity-80 mt-0.5">✓</span>
+                                  <span className="text-[9px] mt-0.5 leading-none">✓</span>
                                 )}
                               </button>
                             );
@@ -405,14 +407,14 @@ export function AppointmentModal({
                 </div>
               </div>
 
-              {/* Manual time override */}
+              {/* Manual override toggle */}
               <button
                 type="button"
                 onClick={() => setIsCustomTime(!isCustomTime)}
-                className="mt-2 text-xs font-semibold text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
+                className="mt-2 text-xs font-semibold text-slate-400 hover:text-emerald-600 flex items-center gap-1.5 transition-colors"
               >
                 <Clock className="w-3 h-3" />
-                {isCustomTime ? 'Usar grilla de horarios' : 'Ingresar hora manualmente'}
+                {isCustomTime ? '← Volver a la grilla' : 'Ingresar hora distinta'}
               </button>
               {isCustomTime && (
                 <input
