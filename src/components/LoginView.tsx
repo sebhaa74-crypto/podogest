@@ -60,7 +60,15 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Ocurrió un error inesperado.');
+      let errorMsg = err.message || 'Ocurrió un error inesperado.';
+      if (errorMsg.toLowerCase().includes('rate limit')) {
+        errorMsg = '⏳ Demasiados intentos. Por favor, espera unos minutos y vuelve a intentarlo.';
+      } else if (errorMsg.includes('Email not confirmed')) {
+        errorMsg = '✉️ Debes confirmar tu correo electrónico. Revisa tu bandeja de entrada.';
+      } else if (errorMsg.includes('Invalid login credentials')) {
+        errorMsg = '🔐 El correo o la contraseña son incorrectos.';
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
