@@ -95,12 +95,15 @@ export function useAppState() {
 
   const addNotification = (notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'> & { sourceId?: string }) => {
     setNotifications(prev => {
-      // Deduplication: if a notification with the same sourceId already exists, ignore it
-      if (notif.sourceId && prev.some(n => n.id === notif.sourceId)) return prev;
-      const id = notif.sourceId || Date.now().toString();
+      // Deduplication: if a notification with the same sourceId already exists, skip
+      if (notif.sourceId) {
+        const exists = prev.some(n => n.id === notif.sourceId);
+        if (exists) return prev;
+      }
+      const id = notif.sourceId || `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const newNotif: AppNotification = { ...notif, id, timestamp: new Date().toISOString(), read: false };
       fireNativeNotification(newNotif.title, newNotif.message);
-      return [newNotif, ...prev.slice(0, 49)]; // Keep max 50 notifications
+      return [newNotif, ...prev].slice(0, 50); // Keep max 50 notifications
     });
   };
   const markAsRead = (id: string) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));

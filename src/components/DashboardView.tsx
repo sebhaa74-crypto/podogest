@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useAppState } from "../store";
 import { formatCurrency, cn, formatTime } from "../lib/utils";
 import {
@@ -65,6 +65,35 @@ export function DashboardView({
   const greetingHour = todayDateLocal.getHours();
   const greeting = greetingHour < 12 ? "Buenos días" : greetingHour < 18 ? "Buenas tardes" : "Buenas noches";
   const specialistName = state.specialists.find(s => s.id === state.activeSpecialistId)?.name?.split(' ')[0] || "Doctor";
+
+  // Fire daily summary notification — once per day
+  const dailySummaryFired = useRef(false);
+  useEffect(() => {
+    if (dailySummaryFired.current || !appointments.length) return;
+    dailySummaryFired.current = true;
+
+    // Daily summary notification
+    if (todayAppts.length > 0) {
+      state.addNotification({
+        sourceId: `daily-summary-${todayStr}`,
+        title: '📋 Resumen del Día',
+        message: `Tienes ${todayAppts.length} cita${todayAppts.length > 1 ? 's' : ''} pendiente${todayAppts.length > 1 ? 's' : ''} para hoy.`,
+        type: 'info',
+        category: 'appointment'
+      });
+    }
+
+    // Low stock alert
+    if (lowStockSupplies.length > 0) {
+      state.addNotification({
+        sourceId: `stock-alert-${todayStr}`,
+        title: '⚠️ Stock Crítico',
+        message: `${lowStockSupplies.length} insumo${lowStockSupplies.length > 1 ? 's' : ''} con stock bajo: ${lowStockSupplies.slice(0, 3).map(s => s.name).join(', ')}${lowStockSupplies.length > 3 ? '...' : ''}.`,
+        type: 'warning',
+        category: 'stock'
+      });
+    }
+  }, [appointments, supplies]);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 min-h-full">

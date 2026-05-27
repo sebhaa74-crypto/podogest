@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Settings2, Clock, CheckCircle2, Bot, Phone, Play, Pause, Send, User, CalendarPlus, Check, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAppState } from '../store';
@@ -13,6 +13,12 @@ export function ChatbotView({ state }: { state: ReturnType<typeof useAppState> }
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<{role: 'user' | 'assistant', text: string}[]>([]);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to the latest message
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory, isLoading]);
 
   const [botConfig, setBotConfig] = useState({
     enabled: true,
@@ -490,7 +496,7 @@ export function ChatbotView({ state }: { state: ReturnType<typeof useAppState> }
             )}
             {isLoading && (
               <div className="flex gap-3 max-w-[85%]">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 animate-pulse">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div className="p-3 rounded-2xl bg-slate-100 text-slate-800 rounded-tl-none flex items-center gap-2">
@@ -500,6 +506,7 @@ export function ChatbotView({ state }: { state: ReturnType<typeof useAppState> }
                 </div>
               </div>
             )}
+            <div ref={chatEndRef} />
           </div>
 
           <div className="p-4 border-t border-slate-100">
@@ -516,10 +523,15 @@ export function ChatbotView({ state }: { state: ReturnType<typeof useAppState> }
                 
                 try {
                   const patient = patients.find(p => p.id === selectedPatientId);
-                  const response = await askMedicalAssistant(userMsg, patient?.name || '');
+                  // Pass full history for contextual multi-turn conversations
+                  const currentHistory = [...chatHistory, { role: 'user' as const, text: userMsg }];
+                  const response = await askMedicalAssistant(userMsg, patient?.name || '', currentHistory);
                   setChatHistory(prev => [...prev, { role: 'assistant', text: response }]);
                 } catch (error: any) {
-                  setChatHistory(prev => [...prev, { role: 'assistant', text: `Error: ${error.message}` }]);
+                  const errorMsg = error.message?.startsWith('⏳') || error.message?.startsWith('🔌')
+                    ? error.message
+                    : `Lo siento, ocurrió un error al procesar tu consulta. ${error.message || 'Intenta de nuevo.'}`;
+                  setChatHistory(prev => [...prev, { role: 'assistant', text: errorMsg }]);
                 } finally {
                   setIsLoading(false);
                 }

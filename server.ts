@@ -368,46 +368,74 @@ Si la variable [Fase de atención] es "Post-cita" y el tratamiento fue "Onicocri
 
   app.post("/api/medical-query", async (req, res) => {
     try {
-      const { query, patientName, apiKey } = req.body;
+      const { query, patientName, history = [] } = req.body;
       
-      let aiClient = ai;
-      if (apiKey && apiKey.trim() !== '') {
-        aiClient = new GoogleGenAI({ apiKey: apiKey.trim() });
-      }
+      const systemPrompt = `Eres un asistente médico experto en podología clínica. Ayudas a podólogos con:
+- Diagnóstico diferencial de patologías del pie
+- Protocolos de tratamiento y posología
+- Indicaciones pre y post operatorias
+- Biomecánica y ortopodología
+- Dermatología podológica
 
-      const context = `
-        Eres un experto asistente médico para podólogos. 
-        Se te hace la siguiente consulta para ayudar en el diagnóstico o tratamiento.
-        Paciente: ${patientName || "No especificado"}
-      `;
-      const response = await aiClient.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          { role: "user", parts: [{ text: `${context}\n\nConsulta médica: ${query}` }] }
-        ]
-      });
-      res.json({ text: response.text });
-    } catch (error: any) {
-      console.error("Medical Query Error:", error);
-      
-      // If gemini-2.5-flash fails, fallback to 1.5-flash
-      if (error.status === 404 || error.message?.includes("not found")) {
+Responde de forma clara, profesional y estructurada. Usa listas cuando sea apropiado.
+Si la consulta involucra un paciente específico, considera su contexto.
+IMPORTANTE: Siempre aclara que tu respuesta es orientativa y no reemplaza el juicio clínico profesional.`;
+
+      // Build conversation contents with history for contextual responses
+      const contents = [
+        ...history
+          .filter((h: any) => h.text && h.text.trim() !== '')
+          .map((h: any) => ({
+            role: h.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: h.text }]
+          })),
+        {
+          role: 'user',
+          parts: [{
+            text: patientName
+              ? `[Contexto: Paciente ${patientName}]\n\nConsulta médica: ${query}`
+              : `Consulta médica: ${query}`
+          }]
+        }
+      ];
+
+      // Try models in order of preference
+      const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+      let lastError: any = null;
+
+      for (const model of models) {
         try {
-          const { query, patientName, apiKey } = req.body;
-          let aiClient = ai;
-          if (apiKey && apiKey.trim() !== '') aiClient = new GoogleGenAI({ apiKey: apiKey.trim() });
-          
-          const context = `Eres un experto podólogo. Paciente: ${patientName || "No especificado"}`;
-          const response = await aiClient.models.generateContent({
-            model: "gemini-1.5-flash",
-            contents: [{ role: "user", parts: [{ text: `${context}\n\nConsulta: ${query}` }] }]
+          const response = await ai.models.generateContent({
+            model,
+            contents,
+            config: {
+              systemInstruction: systemPrompt,
+            }
           });
-          return res.json({ text: response.text });
-        } catch (fallbackError) {
-           return res.status(500).json({ error: "El modelo no se encontró o la clave es inválida." });
+          return res.json({ text: response.text || 'No se pudo generar una respuesta.' });
+        } catch (err: any) {
+          lastError = err;
+          // If it's a model-not-found error, try the next model
+          if (err.status === 404 || err.message?.includes("not found")) {
+            continue;
+          }
+          // If it's a quota error, return immediately
+          if (err.status === 429 || err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED")) {
+            return res.status(429).json({
+              error: "Cuota de IA excedida temporalmente. Intenta de nuevo en unos segundos."
+            });
+          }
+          // For other errors, try next model
+          continue;
         }
       }
-      res.status(500).json({ error: "No se pudo procesar la consulta." });
+
+      // All models failed
+      console.error("Medical Query Error (all models failed):", lastError);
+      res.status(500).json({ error: "No se pudo procesar la consulta. Verifica la API Key de Gemini en el archivo .env del servidor." });
+    } catch (error: any) {
+      console.error("Medical Query Error:", error);
+      res.status(500).json({ error: "Error interno del servidor al procesar la consulta médica." });
     }
   });
 

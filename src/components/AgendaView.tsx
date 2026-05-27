@@ -43,14 +43,22 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
     const checkReminders = () => {
       const now = new Date();
       appointmentsRef.current.forEach((appt) => {
-        const apptDate = new Date(`${appt.date}T${formatTime(appt.time)}:00`);
+        // Validate date and time before calculating
+        if (!appt.date || !appt.time) return;
+        const timeStr = formatTime(appt.time);
+        if (!timeStr || timeStr.length < 5) return;
+
+        const apptDate = new Date(`${appt.date}T${timeStr}:00`);
+        // Guard against invalid dates
+        if (isNaN(apptDate.getTime())) return;
+
         const hoursDiff = (apptDate.getTime() - now.getTime()) / (1000 * 60 * 60);
         const minutesDiff = (apptDate.getTime() - now.getTime()) / (1000 * 60);
         const patient = patientsRef.current.find(p => p.id === appt.patientId);
 
         if (!patient) return;
 
-        // 1. Reminder 24 h before
+        // 1. Reminder 24 h before — only send the specific field to avoid stale overwrites
         if (hoursDiff > 0 && hoursDiff <= 24 && !appt.reminderSent && appt.status === 'pending') {
           addNotificationRef.current({
             sourceId: `reminder-24h-${appt.id}`,
@@ -59,7 +67,7 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
             type: 'info',
             category: 'appointment'
           });
-          updateAppointmentRef.current(appt.id, { ...appt, reminderSent: true });
+          updateAppointmentRef.current(appt.id, { reminderSent: true });
         }
 
         // 2. Reminder 15 min before
@@ -71,7 +79,7 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
             type: 'warning',
             category: 'appointment'
           });
-          updateAppointmentRef.current(appt.id, { ...appt, reminder15mSent: true });
+          updateAppointmentRef.current(appt.id, { reminder15mSent: true });
         }
 
         // 3. Unpaid reminder every 48 h
@@ -87,14 +95,15 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
               type: 'alert',
               category: 'payment'
             });
-            updateAppointmentRef.current(appt.id, { ...appt, unpaidReminderLevel: reminderLevel });
+            updateAppointmentRef.current(appt.id, { unpaidReminderLevel: reminderLevel });
           }
         }
       });
     };
 
-    // First check happens after 60s, NOT immediately on mount, to avoid false positives on page load
-    const interval = setInterval(checkReminders, 60000);
+    // Run check immediately on mount, then every 30 seconds for responsiveness
+    checkReminders();
+    const interval = setInterval(checkReminders, 30000);
     return () => clearInterval(interval);
   }, [autoRemindersEnabled]);
   

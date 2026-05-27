@@ -1,27 +1,36 @@
-// NOTA DE SEGURIDAD: Inicializar el cliente de Gemini y colocar la clave API en el navegador
-// expone la clave al público. Siguiendo las directrices estrictas de seguridad de la plataforma, 
-// la clave se debe mantener y utilizar SIEMPRE en un entorno de servidor. 
-// Para este proyecto, todas las consultas a Gemini se enrutan de forma segura a través de 
-// nuestro backend Express (ver server.ts) que ya tiene el SDK @google/genai configurado.
-// 
-// La variable solicitada se define aquí a modo de referencia, pero debes colocar tu clave 
-// real en la sección de Configuración de Entorno (.env) como GEMINI_API_KEY.
-export const API_KEY = "AIzaSyAN5gOeKe1CJ5rQBiLvD0SK6mK3qcRYJIY"; 
+// NOTA DE SEGURIDAD: La clave API de Gemini se mantiene SOLO en el servidor (.env).
+// El cliente nunca accede directamente a la API — todas las consultas se enrutan
+// de forma segura a través del backend Express (ver server.ts).
 
-export async function askMedicalAssistant(query: string, patientName: string) {
-  // En lugar de usar la clave en el cliente directamente con @google/generative-ai, 
-  // realizamos un proxy a la ruta segura de la API del servidor usando gemini-1.5-flash.
+export async function askMedicalAssistant(
+  query: string,
+  patientName: string,
+  chatHistory: { role: 'user' | 'assistant'; text: string }[] = []
+) {
   const response = await fetch('/api/medical-query', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, patientName, apiKey: API_KEY })
+    body: JSON.stringify({ query, patientName, history: chatHistory })
   });
-  
+
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Error al consultar al asistente');
+    let errorMessage = 'Error al consultar al asistente médico.';
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorMessage;
+    } catch {
+      // Response wasn't JSON
+    }
+
+    if (response.status === 429) {
+      throw new Error('⏳ Cuota de IA excedida temporalmente. Intenta de nuevo en unos segundos.');
+    }
+    if (response.status === 503 || response.status === 502) {
+      throw new Error('🔌 El servicio de IA no está disponible en este momento. Intenta más tarde.');
+    }
+    throw new Error(errorMessage);
   }
-  
+
   const data = await response.json();
-  return data.text;
+  return data.text || 'No se pudo generar una respuesta.';
 }
