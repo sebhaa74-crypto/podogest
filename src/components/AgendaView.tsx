@@ -361,14 +361,14 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
   };
 
   const renderDayView = () => {
-    // Build full schedule: all slots 08:00-21:00
+    // Build full schedule: all slots 08:00-21:00 (cada 15 min)
     const allSlots: { time: string; appt: typeof dailyAppointments[0] | null }[] = [];
     let h = 8, m = 0;
     while (h < 21 || (h === 21 && m === 0)) {
       const time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
       const appt = dailyAppointments.find(a => formatTime(a.time) === time) || null;
       allSlots.push({ time, appt });
-      m += 30;
+      m += 15;
       if (m >= 60) { h++; m -= 60; }
     }
 
@@ -406,8 +406,8 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
             </div>
           </div>
 
-          {/* Slot grid - 2 columns (each column = one 30-min slot row) */}
-          <div className="p-3 grid grid-cols-2 gap-1.5">
+          {/* Slot grid - 4 columns (each column = one 15-min slot row) */}
+          <div className="p-3 grid grid-cols-4 gap-1.5">
             {allSlots.map(({ time, appt }) => {
               const patient = appt ? patients.find(p => p.id === appt.patientId) : null;
               const isFree = !appt;
@@ -428,7 +428,7 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
                     }
                   }}
                   className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all',
+                    'flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl border text-center transition-all',
                     isFree
                       ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 active:scale-95 cursor-pointer'
                       : appt?.status === 'completed'
@@ -438,21 +438,21 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
                           : 'bg-amber-50 border-amber-200 cursor-default'
                   )}
                 >
-                  {/* Color dot */}
-                  <div className={cn('w-2 h-2 rounded-full shrink-0', statusColor)} />
-
-                  {/* Time */}
-                  <span className={cn(
-                    'text-xs font-black shrink-0 tabular-nums',
-                    isFree ? 'text-emerald-700' : 'text-slate-600'
-                  )}>{time}</span>
+                  {/* Time and Color dot row */}
+                  <div className="flex items-center gap-1.5">
+                    <div className={cn('w-2 h-2 rounded-full shrink-0', statusColor)} />
+                    <span className={cn(
+                      'text-xs font-black shrink-0 tabular-nums leading-none',
+                      isFree ? 'text-emerald-700' : 'text-slate-600'
+                    )}>{time}</span>
+                  </div>
 
                   {/* Content */}
                   {isFree ? (
-                    <span className="text-[10px] font-semibold text-emerald-600 truncate">Libre</span>
+                    <span className="text-[10px] font-semibold text-emerald-600 truncate leading-none">Libre</span>
                   ) : (
                     <span className={cn(
-                      'text-[10px] font-bold truncate',
+                      'text-[9px] font-bold truncate leading-none w-full px-1',
                       appt?.status === 'completed' ? 'text-emerald-700' :
                       appt?.status === 'cancelled' ? 'text-red-400' : 'text-amber-700'
                     )}>
