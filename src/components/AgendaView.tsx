@@ -361,26 +361,119 @@ export function AgendaView({ state }: { state: ReturnType<typeof useAppState> })
   };
 
   const renderDayView = () => {
-    return (
-      <div className="flex flex-col gap-3">
-        {dailyAppointments.length > 0 && (
-          <div className="flex items-center gap-3 px-1">
-            <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
-              {dailyAppointments.length} cita{dailyAppointments.length > 1 ? 's' : ''} · {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
-            </span>
-            <div className="flex-1 h-px bg-slate-200" />
-          </div>
-        )}
+    // Build full schedule: all slots 08:00-21:00
+    const allSlots: { time: string; appt: typeof dailyAppointments[0] | null }[] = [];
+    let h = 8, m = 0;
+    while (h < 21 || (h === 21 && m === 0)) {
+      const time = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+      const appt = dailyAppointments.find(a => formatTime(a.time) === time) || null;
+      allSlots.push({ time, appt });
+      m += 30;
+      if (m >= 60) { h++; m -= 60; }
+    }
 
+    const freeCount = allSlots.filter(s => !s.appt).length;
+    const bookedCount = allSlots.filter(s => s.appt).length;
+
+    return (
+      <div className="flex flex-col gap-4">
+        {/* ── Day summary strip */}
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+            {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
+          </span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        {/* ── Hourly schedule overview */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm font-bold text-slate-700">Horario del Día</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <span className="text-[10px] font-bold text-slate-500">{freeCount} libres</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <span className="text-[10px] font-bold text-slate-500">{bookedCount} ocupadas</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Slot grid - 2 columns (each column = one 30-min slot row) */}
+          <div className="p-3 grid grid-cols-2 gap-1.5">
+            {allSlots.map(({ time, appt }) => {
+              const patient = appt ? patients.find(p => p.id === appt.patientId) : null;
+              const isFree = !appt;
+              const statusColor = appt
+                ? appt.status === 'completed' ? 'bg-emerald-500'
+                : appt.status === 'cancelled' ? 'bg-red-400'
+                : 'bg-amber-400'
+                : 'bg-emerald-400';
+
+              return (
+                <button
+                  key={time}
+                  type="button"
+                  onClick={() => {
+                    if (isFree) {
+                      setIsAdding(true);
+                      setIsAddingNewPatient(false);
+                    }
+                  }}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all',
+                    isFree
+                      ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 active:scale-95 cursor-pointer'
+                      : appt?.status === 'completed'
+                        ? 'bg-emerald-50/70 border-emerald-200 cursor-default'
+                        : appt?.status === 'cancelled'
+                          ? 'bg-red-50/70 border-red-100 cursor-default opacity-60'
+                          : 'bg-amber-50 border-amber-200 cursor-default'
+                  )}
+                >
+                  {/* Color dot */}
+                  <div className={cn('w-2 h-2 rounded-full shrink-0', statusColor)} />
+
+                  {/* Time */}
+                  <span className={cn(
+                    'text-xs font-black shrink-0 tabular-nums',
+                    isFree ? 'text-emerald-700' : 'text-slate-600'
+                  )}>{time}</span>
+
+                  {/* Content */}
+                  {isFree ? (
+                    <span className="text-[10px] font-semibold text-emerald-600 truncate">Libre</span>
+                  ) : (
+                    <span className={cn(
+                      'text-[10px] font-bold truncate',
+                      appt?.status === 'completed' ? 'text-emerald-700' :
+                      appt?.status === 'cancelled' ? 'text-red-400' : 'text-amber-700'
+                    )}>
+                      {(patient?.name || 'Privado').split(' ')[0]}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Detailed appointment cards (only booked) */}
         {dailyAppointments.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 py-16 px-6">
-            <div className="w-20 h-20 rounded-2xl bg-slate-50 flex items-center justify-center">
-              <CalendarIcon className="w-10 h-10 text-slate-300" />
+          <div className="bg-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-4 py-12 px-6">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center">
+              <CalendarIcon className="w-8 h-8 text-emerald-300" />
             </div>
             <div className="text-center">
-              <p className="font-bold text-slate-600 text-base">Sin citas para este día</p>
-              <p className="text-slate-400 text-sm mt-1">Toca Nueva Cita para agendar</p>
+              <p className="font-bold text-slate-600 text-base">Día libre — sin citas agendadas</p>
+              <p className="text-slate-400 text-sm mt-1">Toca un horario verde o el botón + para agendar</p>
             </div>
           </div>
         ) : (
