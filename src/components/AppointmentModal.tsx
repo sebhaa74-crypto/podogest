@@ -61,25 +61,37 @@ export function AppointmentModal({
   const [isCustomTime, setIsCustomTime] = useState(false);
 
   const generateAvailableTimes = () => {
-    const times: { time: string, isAvailable: boolean }[] = [];
+    const times: { time: string, isAvailable: boolean, bookedBy?: string, bookedByInitials?: string }[] = [];
     let currentHour = 8;
     let currentMinute = 0;
 
     while (currentHour <= 21) {
-      if (currentHour === 21 && currentMinute > 0) break; // End at 21:00
+      if (currentHour === 21 && currentMinute > 0) break;
 
       const h = currentHour.toString().padStart(2, '0');
       const m = currentMinute.toString().padStart(2, '0');
       const timeString = `${h}:${m}`;
-      
-      const hasOverlap = appointments.some(a => 
-        a.id !== appointment?.id && 
-        a.date === formData.date && 
+
+      const conflicting = appointments.find(a =>
+        a.id !== appointment?.id &&
+        a.date === formData.date &&
         a.time === timeString &&
         a.status !== 'cancelled'
       );
-      
-      times.push({ time: timeString, isAvailable: !hasOverlap });
+
+      let bookedBy: string | undefined;
+      let bookedByInitials: string | undefined;
+      if (conflicting) {
+        // Find who booked it
+        const bookingPatient = patients.find(p => p.id === conflicting.patientId);
+        const bookingSpecialist = specialists.find(s => s.id === conflicting.specialistId);
+        bookedBy = bookingPatient?.name || 'Paciente';
+        const specName = bookingSpecialist?.name || '';
+        const parts = specName.split(' ').filter(Boolean);
+        bookedByInitials = parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : specName.slice(0, 2) || 'Dr';
+      }
+
+      times.push({ time: timeString, isAvailable: !conflicting, bookedBy, bookedByInitials });
 
       currentMinute += 15;
       if (currentMinute >= 60) {
@@ -127,9 +139,11 @@ export function AppointmentModal({
     );
 
     if (overlappingAppointment) {
+      const otherPatient = patients.find(p => p.id === overlappingAppointment.patientId);
       const otherSpecialist = specialists.find(s => s.id === overlappingAppointment.specialistId);
-      const specialistName = otherSpecialist ? otherSpecialist.name : 'Dra. Lizbeth/Yarella';
-      setErrorText(`Horario no disponible, ${specialistName} ya tiene paciente a esta hora.`);
+      const specName = otherSpecialist ? otherSpecialist.name.split(' ')[0] : 'el profesional';
+      const patName = otherPatient ? otherPatient.name.split(' ')[0] : 'un paciente';
+      setErrorText(`⛔ Hora ${formData.time} ya está ocupada — ${specName} tiene a ${patName} agendado en este horario.`);
       return;
     }
 
@@ -313,42 +327,101 @@ export function AppointmentModal({
               <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                 <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>Hora *</span>
+                {formData.time && (
+                  <span className="ml-auto text-emerald-600 font-black text-sm">{formData.time}</span>
+                )}
               </label>
-              <div className="relative">
-                <select 
-                  required={!isCustomTime} 
-                  value={isCustomTime ? 'OTRA' : formData.time} 
-                  onChange={e => {
-                    if (e.target.value === 'OTRA') {
-                      setIsCustomTime(true);
-                      setFormData({...formData, time: ''});
-                    } else {
-                      setIsCustomTime(false);
-                      setFormData({...formData, time: e.target.value});
-                    }
-                  }} 
-                  className="w-full h-11 pl-4 pr-10 bg-slate-50 hover:bg-slate-100/70 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none text-slate-900 font-semibold text-sm cursor-pointer shadow-sm"
-                >
-                  <option value="">Seleccionar Hora</option>
-                  {availableTimes.map(({ time, isAvailable }) => (
-                    <option key={time} value={time} disabled={!isAvailable}>
-                      {time} {!isAvailable ? ' (Ocupado)' : ''}
-                    </option>
-                  ))}
-                  <option value="OTRA">Otra (Ingresar manualmente)</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5">
-                  <ChevronDown className="w-4 h-4 text-slate-500" />
+
+              {/* Visual time grid */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                {/* Legend */}
+                <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-200 bg-white">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Disponible</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-400" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Ocupado</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-emerald-700" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Seleccionado</span>
+                  </div>
+                </div>
+
+                {/* Hour groups */}
+                <div className="max-h-52 overflow-y-auto p-2 space-y-2">
+                  {Array.from({ length: 14 }, (_, i) => i + 8).map(hour => {
+                    const hourSlots = availableTimes.filter(t => t.time.startsWith(`${hour.toString().padStart(2,'0')}:`));
+                    if (hourSlots.length === 0) return null;
+                    const hasAvailable = hourSlots.some(s => s.isAvailable);
+                    const hasOccupied = hourSlots.some(s => !s.isAvailable);
+                    return (
+                      <div key={hour}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            {hour.toString().padStart(2,'0')}:00
+                          </span>
+                          {hasOccupied && <span className="text-[9px] font-bold text-red-400 bg-red-50 px-1.5 py-0.5 rounded-full">Ocupado</span>}
+                          {hasAvailable && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Disponible</span>}
+                        </div>
+                        <div className="grid grid-cols-4 gap-1">
+                          {hourSlots.map(({ time, isAvailable, bookedBy, bookedByInitials }) => {
+                            const isSelected = formData.time === time;
+                            return (
+                              <button
+                                key={time}
+                                type="button"
+                                disabled={!isAvailable}
+                                onClick={() => {
+                                  setIsCustomTime(false);
+                                  setFormData({ ...formData, time });
+                                }}
+                                title={!isAvailable ? `Ocupado: ${bookedBy || 'Paciente agendado'}` : `Seleccionar ${time}`}
+                                className={cn(
+                                  'relative flex flex-col items-center justify-center py-1.5 rounded-lg text-[11px] font-bold transition-all border',
+                                  isSelected
+                                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-md scale-105'
+                                    : isAvailable
+                                      ? 'bg-white text-slate-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700 active:scale-95'
+                                      : 'bg-red-50 text-red-400 border-red-200 cursor-not-allowed opacity-80'
+                                )}
+                              >
+                                <span>{time}</span>
+                                {!isAvailable && bookedByInitials && (
+                                  <span className="text-[8px] font-black opacity-70 mt-0.5">{bookedByInitials}</span>
+                                )}
+                                {isSelected && (
+                                  <span className="text-[8px] opacity-80 mt-0.5">✓</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Manual time override */}
+              <button
+                type="button"
+                onClick={() => setIsCustomTime(!isCustomTime)}
+                className="mt-2 text-xs font-semibold text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
+              >
+                <Clock className="w-3 h-3" />
+                {isCustomTime ? 'Usar grilla de horarios' : 'Ingresar hora manualmente'}
+              </button>
               {isCustomTime && (
-                <input 
-                  required 
+                <input
+                  required
                   autoFocus
                   value={formData.time}
-                  onChange={e => setFormData({...formData, time: e.target.value})} 
-                  type="time" 
-                  className="w-full h-11 mt-2 px-4 bg-slate-50 hover:bg-slate-100/70 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none text-slate-900 font-semibold text-sm shadow-sm" 
+                  onChange={e => setFormData({ ...formData, time: e.target.value })}
+                  type="time"
+                  className="w-full h-11 mt-2 px-4 bg-slate-50 hover:bg-slate-100/70 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none text-slate-900 font-semibold text-sm shadow-sm"
                 />
               )}
             </div>
